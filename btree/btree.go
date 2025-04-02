@@ -57,7 +57,12 @@ func (node BNode) getPtr(idx uint16) uint64 {
 	return binary.LittleEndian.Uint64(node[pos:])
 }
 
-func (node BNode) setPtr(idx uint16, val uint64) {}
+func (node BNode) setPtr(idx uint16, val uint64) {
+	utils.Assert(idx < node.nkeys())
+
+	pos := HEADER + 8*idx
+	binary.LittleEndian.PutUint64(node[pos:], val)
+}
 
 // offset - helper to find KVs
 // ...offset list to locate the nth KV in O(1). This also allows binary searches within a node.
@@ -129,18 +134,32 @@ func nodeLookUpLE(node BNode, key []byte) uint16 {
 
 // add a new node to a leaf node
 // copy-on-write
-// func leafInsert(
-// 	new BNode, old BNode, idx uint16,
-// 	key []byte, val []byte,
-// ) {
-// 	new.setHeader(BNODE_LEAF, old.nkeys()+1)
+func leafInsert(
+	new BNode, old BNode, idx uint16,
+	key []byte, val []byte,
+) {
+	new.setHeader(BNODE_LEAF, old.nkeys()+1)
 
-// 	nodeAppendRange(new, old, 0, 0, idx)
-// 	nodeAppendKV(new, idx, 0, key, val)
-// 	nodeAppendRange(new, old, idx+1, idx, old.nkeys()-idx)
-// }
+	nodeAppendRange(new, old, 0, 0, idx)
+	nodeAppendKV(new, idx, 0, key, val)
+	nodeAppendRange(new, old, idx+1, idx, old.nkeys()-idx)
+}
 
-// func nodeAppendKV(new BNode, idx uint16, ptr uint64, key []byte, val []byte) {
-// 	// ptrs
-// 	new.setPtr()
-// }
+func nodeAppendKV(new BNode, idx uint16, ptr uint64, key []byte, val []byte) {
+	// ptrs
+	new.setPtr(idx, ptr)
+
+	//KVs
+	pos := new.kvPos(idx)
+
+	//4B KV sizes
+	binary.LittleEndian.PutUint16(new[pos+0:], uint16(len(key)))
+	binary.LittleEndian.PutUint16(new[pos+2:], uint16(len(val)))
+
+	// KV data
+	copy(new[pos+4:], key)
+	copy(new[pos+4+uint16(len(key)):], val)
+
+	// update the offset value for the next key
+	new.setOffset(idx+1, new.getOffset(idx)+4+uint16(len(key)+len(val)))
+}
