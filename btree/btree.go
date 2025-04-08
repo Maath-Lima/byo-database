@@ -84,7 +84,7 @@ func (node BNode) getOffset(idx uint16) uint16 {
 func (node BNode) setOffset(idx uint16, offset uint16) {}
 
 // key-values
-// returns position of kv-pair at given idenx
+// returns position of kv-pair at given index
 func (node BNode) kvPos(idx uint16) uint16 {
 	utils.Assert(idx <= node.nkeys())
 
@@ -97,14 +97,20 @@ func (node BNode) kvPos(idx uint16) uint16 {
 // returns key of key-pair
 func (node BNode) getKey(idx uint16) []byte {
 	utils.Assert(idx < node.nkeys())
-
 	pos := node.kvPos(idx)
 	klen := binary.LittleEndian.Uint16(node[pos:])
 
 	return node[pos+4:][:klen]
 }
 
-// func (node BNode) getVal(idx uint16) []byte
+func (node BNode) getVal(idx uint16) []byte {
+	utils.Assert(idx < node.nkeys())
+	pos := node.kvPos(idx)
+	klen := binary.LittleEndian.Uint16(node[pos+0:])
+	vlen := binary.LittleEndian.Uint16(node[pos+2:])
+
+	return node[pos+4+klen:][:vlen]
+}
 
 // return node size in bytes
 func (node BNode) nbytes() uint16 {
@@ -130,36 +136,4 @@ func nodeLookUpLE(node BNode, key []byte) uint16 {
 	}
 
 	return found
-}
-
-// add a new node to a leaf node
-// copy-on-write
-func leafInsert(
-	new BNode, old BNode, idx uint16,
-	key []byte, val []byte,
-) {
-	new.setHeader(BNODE_LEAF, old.nkeys()+1)
-
-	nodeAppendRange(new, old, 0, 0, idx)
-	nodeAppendKV(new, idx, 0, key, val)
-	nodeAppendRange(new, old, idx+1, idx, old.nkeys()-idx)
-}
-
-func nodeAppendKV(new BNode, idx uint16, ptr uint64, key []byte, val []byte) {
-	// ptrs
-	new.setPtr(idx, ptr)
-
-	//KVs
-	pos := new.kvPos(idx)
-
-	//4B KV sizes
-	binary.LittleEndian.PutUint16(new[pos+0:], uint16(len(key)))
-	binary.LittleEndian.PutUint16(new[pos+2:], uint16(len(val)))
-
-	// KV data
-	copy(new[pos+4:], key)
-	copy(new[pos+4+uint16(len(key)):], val)
-
-	// update the offset value for the next key
-	new.setOffset(idx+1, new.getOffset(idx)+4+uint16(len(key)+len(val)))
 }
