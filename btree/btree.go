@@ -119,6 +119,7 @@ func (node BNode) nbytes() uint16 {
 
 // lookup
 // in a B+Tree, the first key in a leaf node is always a copy of the key from the parent node that separates it from its left sibling.
+// if found = 0 the search key is smaller than any real key in this node, but we're in the correct node because the parent guided us here.
 func nodeLookUpLE(node BNode, key []byte) uint16 {
 	nkeys := node.nkeys()
 	found := uint16(0)
