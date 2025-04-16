@@ -1,6 +1,7 @@
 package btree
 
 import (
+	"bytes"
 	"database/utils"
 	"encoding/binary"
 )
@@ -106,12 +107,49 @@ func nodeSplit3(old BNode) (uint16, [3]BNode) {
 	nodeSplit2(left, right, old)
 	if left.nbytes() <= BTREE_PAGE_SIZE {
 		left = left[:BTREE_PAGE_SIZE]
-		return 2, [3]BNode{left, right}
+		return 2, [3]BNode{left, right} // 2 nodes
 	}
 
 	leftleft := BNode(make([]byte, BTREE_PAGE_SIZE))
 	middle := BNode(make([]byte, BTREE_PAGE_SIZE))
 	nodeSplit2(leftleft, middle, left)
 	utils.Assert(leftleft.nbytes() <= BTREE_PAGE_SIZE)
-	return 3, [3]BNode{leftleft, left, right}
+	return 3, [3]BNode{leftleft, left, right} // 3 nodes
+}
+
+func nodeReplaceKidN(tree *BTree, new BNode, old BNode, idx uint16, kids ...BNode) {
+	inc := uint16(len(kids))
+	new.setHeader(BNODE_NODE, old.nkeys()+inc-1)
+	nodeAppendRange(new, old, 0, 0, idx)
+	for i, node := range kids {
+		nodeAppendKV(new, idx+uint16(i), tree.new(node), node.getKey(0), nil)
+	}
+	nodeAppendRange(new, old, idx+inc, idx+1, old.nkeys()-(idx+1))
+}
+
+func treeInsert(tree *BTree, node BNode, key []byte, val []byte) BNode {
+	// the extra size allows it to exceed 1 page temporarily
+	// the result node it's allowed to be bigger than 1 page and will br split if so
+	new := BNode(make([]byte, 2*BTREE_PAGE_SIZE))
+	// where to inset the key?
+	idx := nodeLookUpLE(node, key)
+	switch node.btype() {
+	case BNODE_LEAF:
+		if bytes.Equal(key, node.getKey(idx)) {
+			leafUpdate(new, node, idx, key, val) // update it
+		} else {
+			leafInsert(new, node, idx+1, key, val) // insert
+		}
+	case BNODE_NODE: // internal node, walk into the child node
+		kptr := node.getPtr(idx)
+		knode := treeInsert(tree, tree.get(kptr), key, val)
+		// after insertion, split the result
+		nsplit, split := nodeSplit3(knode)
+		// deallocate the old kid node
+		tree.del(kptr)
+		// update the kid links
+		nodeReplaceKidN(tree, new, node, idx, split[:nsplit]...)
+	}
+
+	return new
 }
