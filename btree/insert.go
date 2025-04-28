@@ -164,7 +164,7 @@ func (tree *BTree) Insert(key []byte, val []byte) {
 		root := BNode(make([]byte, BTREE_PAGE_SIZE))
 		root.setHeader(BNODE_LEAF, 2)
 		// dummy key for tree covering the whole key space
-		nodeAppendKV(root, 0, 0, nil, nil) // sentinel value, to nodeLookupLE always find a position
+		nodeAppendKV(root, 0, 0, nil, nil) // sentinel value, to nodeLookupLE always find a position | used to remove an edge case
 		nodeAppendKV(root, 1, 0, key, val)
 		tree.root = tree.new(root)
 		return
