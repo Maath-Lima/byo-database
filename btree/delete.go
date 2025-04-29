@@ -7,6 +7,31 @@ func leafDelete(new BNode, old BNode, idx uint16) {
 	nodeAppendRange(new, old, idx+1, idx, old.nkeys()-idx) // cut one KV
 }
 
+func treeDelete(tree *BTree, node BNode, key []byte) BNode {
+
+}
+
+func nodeDelete(tree *BTree, node BNode, idx uint16, key []byte) BNode {
+	kptr := node.getPtr(idx)
+	updated := treeDelete(tree, tree.get(kptr), key)
+	if len(updated) == 0 {
+		return BNode{} // not found
+	}
+	tree.del(kptr)
+	// check for merging
+	new := BNode(make([]byte, BTREE_PAGE_SIZE))
+	mergeDir, sibling := shouldMerge(tree, node, idx, updated)
+	switch {
+	case mergeDir < 0: // left
+
+	case mergeDir > 0: // right
+
+	case mergeDir == 0 && updated.nkeys() == 0:
+
+	case mergeDir == 0 && updated.nkeys() > 0:
+	}
+}
+
 func (tree *BTree) Delete(key []byte) (bool, error) {
 
 }
