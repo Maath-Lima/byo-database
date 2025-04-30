@@ -27,7 +27,7 @@ func treeDelete(tree *BTree, node BNode, key []byte) BNode {
 func leafDelete(new BNode, old BNode, idx uint16) {
 	new.setHeader(BNODE_LEAF, old.nkeys()-1)
 	nodeAppendRange(new, old, 0, 0, idx)
-	nodeAppendRange(new, old, idx+1, idx, old.nkeys()-idx) // cut one KV
+	nodeAppendRange(new, old, idx, idx+1, old.nkeys()-idx) // cut one KV
 }
 
 func nodeDelete(tree *BTree, node BNode, idx uint16, key []byte) BNode {

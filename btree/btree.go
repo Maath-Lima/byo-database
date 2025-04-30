@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"database/utils"
 	"encoding/binary"
+	"fmt"
 	"unsafe"
 )
 
@@ -148,7 +149,7 @@ type C struct {
 	pages map[uint64]BNode  // in-memory pages
 }
 
-func newC() *C {
+func NewC() *C {
 	pages := map[uint64]BNode{}
 	return &C{
 		tree: BTree{
@@ -164,6 +165,30 @@ func newC() *C {
 				pages[ptr] = node
 				return ptr
 			},
+			del: func(ptr uint64) {
+				utils.Assert(pages[ptr] != nil)
+				delete(pages, ptr)
+			},
 		},
+		ref:   map[string]string{},
+		pages: pages,
+	}
+}
+
+func (c *C) Add(key string, val string) {
+	c.tree.Insert([]byte(key), []byte(val))
+	c.ref[key] = val
+}
+
+func (c *C) Del(key string) bool {
+	delete(c.ref, key)
+	return c.tree.Delete([]byte(key))
+}
+
+func (c *C) PrintTree() {
+	fmt.Println("Pages:")
+	for pt, node := range c.pages {
+		fmt.Println("Pointer:", pt)
+		fmt.Println("BNode data:", node)
 	}
 }
