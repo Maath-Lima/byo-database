@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"database/utils"
 	"encoding/binary"
+	"unsafe"
 )
 
 const HEADER = 4
@@ -139,4 +140,30 @@ func nodeLookUpLE(node BNode, key []byte) uint16 {
 	}
 
 	return found
+}
+
+type C struct {
+	tree  BTree
+	ref   map[string]string // ref for data
+	pages map[uint64]BNode  // in-memory pages
+}
+
+func newC() *C {
+	pages := map[uint64]BNode{}
+	return &C{
+		tree: BTree{
+			get: func(ptr uint64) []byte {
+				node, ok := pages[ptr]
+				utils.Assert(ok)
+				return node
+			},
+			new: func(node []byte) uint64 {
+				utils.Assert(BNode(node).nbytes() <= BTREE_PAGE_SIZE)
+				ptr := uint64(uintptr(unsafe.Pointer(&node[0])))
+				utils.Assert(pages[ptr] == nil)
+				pages[ptr] = node
+				return ptr
+			},
+		},
+	}
 }
