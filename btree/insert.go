@@ -127,6 +127,14 @@ func nodeReplaceKidN(tree *BTree, new BNode, old BNode, idx uint16, kids ...BNod
 	nodeAppendRange(new, old, idx+inc, idx+1, old.nkeys()-(idx+1))
 }
 
+// replace 2 adjacent links with 1
+func nodeReplace2Kid(new BNode, old BNode, idx uint16, merged uint64, key []byte) {
+	new.setHeader(BNODE_NODE, old.nkeys()-1)
+	nodeAppendRange(new, old, 0, 0, idx)
+	nodeAppendKV(new, idx, merged, key, nil)
+	nodeAppendRange(new, old, idx+1, idx+2, old.nkeys()-(idx+1))
+}
+
 func treeInsert(tree *BTree, node BNode, key []byte, val []byte) BNode {
 	// the extra size allows it to exceed 1 page temporarily
 	// the result node it's allowed to be bigger than 1 page and will br split if so
