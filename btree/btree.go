@@ -85,7 +85,9 @@ func (node BNode) getOffset(idx uint16) uint16 {
 	return binary.LittleEndian.Uint16(node[offsetPos(node, idx):])
 }
 
-func (node BNode) setOffset(idx uint16, offset uint16) {}
+func (node BNode) setOffset(idx uint16, offset uint16) {
+	binary.LittleEndian.PutUint16(node[offsetPos(node, idx):], offset)
+}
 
 // key-values
 // returns position of kv-pair at given index
@@ -190,5 +192,18 @@ func (c *C) PrintTree() {
 	for pt, node := range c.pages {
 		fmt.Println("Pointer:", pt)
 		fmt.Println("BNode data:", node)
+	}
+}
+
+func (c *C) DebugPrint() {
+	tree := c.tree
+	root := tree.get(tree.root)
+	node := BNode(root)
+	fmt.Println("Type:", node.btype(), "Keys:", node.nkeys())
+
+	for i := uint16(0); i < node.nkeys(); i++ {
+		k := node.getKey(i)
+		v := node.getVal(i)
+		fmt.Printf("  [%d] Key: %s  Val: %s\n", i, k, v)
 	}
 }

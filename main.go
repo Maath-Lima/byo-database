@@ -17,8 +17,7 @@ func main() {
 	utils.Assert(node1max <= btree.BTREE_PAGE_SIZE)
 
 	tree := btree.NewC()
-	tree.Add("0", "first value")
-	tree.Add("1", "second value")
-	tree.Del("0")
+	tree.Add("0", "1")
+	tree.Add("1", "12")
 	tree.PrintTree()
 }
