@@ -17,10 +17,20 @@ type KV struct {
 	Path string   // file name
 	fd   *os.File // follow how Windows OS deals with file access
 	tree BTree
+	mmap struct {
+		total  int      // mmap size
+		chunks [][]byte // multiple mmaps
+	}
 }
 
-func (db *KV) Open() error //open or create
+// open or create
+func (db *KV) Open() error {
+	db.tree.get = db.pageRead
+	db.tree.new = db.pageAppend
+	db.tree.del = func(u uint64) {}
+}
 
+// DB ops
 func (db *KV) Get(key []byte) ([]byte, bool) {
 	return db.tree.Get(key)
 }
@@ -54,4 +64,18 @@ func updateFile(db *KV) error {
 
 	// 4. fsync to make everything persistent
 	return db.fd.Sync()
+}
+
+// Btree.get, read a page
+func (db *KV) pageRead(ptr uint64) []byte {
+	start := uint64(0)
+	for _, chunk := range db.mmap.chunks {
+		end := start + uint64(len(chunk))/BTREE_PAGE_SIZE
+		if ptr < end {
+			offset := BTREE_PAGE_SIZE * (ptr - start)
+			return chunk[offset : offset+BTREE_PAGE_SIZE]
+		}
+		start = end
+	}
+	panic("bad ptr")
 }
